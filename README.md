@@ -30,12 +30,6 @@ MikuMikuMoving
 ## 動作しない環境
 MikuMikuDance
 
-## 今のところの実行方法
-1. Blender\バージョン\python\lib\site-packages にmmformat.pydを設置
-2. Blenderのテキストエディタでexport_pmx_geo.py を開く
-3. エクスポートしたいメッシュを選択（今のところ複数メッシュは未対応)
-4. BlenderのテキストエディタでRun Script
-
 ## その他
 mmformat.pydのソースはこちらです
 https://github.com/uimac/MMDFormats/tree/python
