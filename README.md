@@ -20,12 +20,18 @@ PMXファイルには、1つのセンターボーンと、頂点数が変化し�
 ・MMMでインポート時に使用するデータ(予定)
 
 ## 動作環境
-Windows Vista以降
-Blender 2.73以降
+Windows Vista以降(今のところ64bitのみ。32bitも対応予定)
+Blender 2.73以降(今のところ64bitのみ。32bitも対応予定)
 MikuMikuMoving
 
 ## 動作しない環境
 MikuMikuDance
+
+## 今のところの実行方法
+1. Blender\バージョン\python\lib\site-packages にmmformat.pydを設置
+2. Blenderのテキストエディタでexport_pmx_geo.py を開く
+3. エクスポートしたいメッシュを選択（今のところ複数メッシュは未対応)
+4. BlenderのテキストエディタでRun Script
 
 ## License
 GPLv2 or GPLv3 or MIT
