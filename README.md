@@ -33,5 +33,9 @@ MikuMikuDance
 3. エクスポートしたいメッシュを選択（今のところ複数メッシュは未対応)
 4. BlenderのテキストエディタでRun Script
 
+## その他
+mmformat.pydのソースはこちらです
+https://github.com/uimac/MMDFormats/tree/python
+
 ## License
 GPLv2 or GPLv3 or MIT
