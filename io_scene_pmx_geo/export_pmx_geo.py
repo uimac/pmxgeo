@@ -1,3 +1,5 @@
+# author: tori31001 at gmail.com
+# website: http://pmxgeo.render.jp/
 import bpy
 import bmesh
 import os
@@ -6,9 +8,10 @@ import math
 import mathutils
 import os.path
 import shutil
+import platform
 
 def copy_image(dst_folder, pmx, mat, texture_dict, image):
-    src = image.filepath
+    src = bpy.path.abspath(image.filepath, library=image.library)
     if os.path.exists(src):
         filename = os.path.basename(src)
         dst = dst_folder + filename
@@ -276,19 +279,49 @@ def export_frames(dst_folder, context, mesh_objects, pmx, vmd, start_frame, fram
     frame = start_frame + frame_count
     yield frame
 
-def export_pmx(context):   
-    import mmformat
-    mesh_objects = [ob for ob in bpy.data.objects if ob.type == 'MESH' and ob.select] 
-    model_base_name = 'out'
-    dst_folder = 'D://pmx/'
+def export_pmx_geo(\
+        dst_folder, \
+        model_base_name, \
+        context, \
+        only_selected, \
+        start_frame, \
+        end_frame):
+
+    #print(dst_folder)
+    frame_count = end_frame - start_frame + 1
+    if frame_count <= 0:
+        print("Error: start frame is greater than end_frame")
+        return
+
+    if "64bit" in platform.architecture()[0]:
+        um_folder = os.path.dirname(os.path.abspath(__file__))
+        um_folder = os.path.join(um_folder, "win64bit")
+        if sys.version_info[:2] == (3, 4):
+            um_folder = os.path.join(um_folder, "python34")
+        if um_folder not in sys.path:
+            sys.path.insert(0, um_folder)
+        import mmformat
+    else:
+        um_folder = os.path.dirname(os.path.abspath(__file__))
+        um_folder = os.path.join(um_folder, "win32bit")
+        if sys.version_info[:2] == (3, 4):
+            um_folder = os.path.join(um_folder, "python34")
+        if um_folder not in sys.path:
+            sys.path.insert(0, um_folder)
+        import mmformat
+
+    mesh_objects = []
+    if only_selected:
+        mesh_objects = [ob for ob in bpy.data.objects if ob.type == 'MESH' and ob.select] 
+    else:
+        mesh_objects = [ob for ob in bpy.data.objects if ob.type == 'MESH'] 
+
+    dst_folder = dst_folder + os.path.sep
     
     if len(mesh_objects) > 0:
         pmx = mmformat.PmxModel()
         vmd = mmformat.VmdMotion()
         init_pmx(pmx)
-        
-        start_frame = 0
-        frame_count = 50
         
         gen = export_frames(dst_folder, context, mesh_objects, pmx, vmd, start_frame, frame_count)
         try:
@@ -298,9 +331,10 @@ def export_pmx(context):
                 model_name = model_base_name + '_' + str(frame)
                 pmx.model_name = model_name
                 pmx.save_to_file(dst_folder + model_name + '.pmx')
+                print(dst_folder + model_name + '.pmx')
                 vmd.model_name = model_name
-                print(len(vmd.ik_frames))
                 vmd.save_to_file(dst_folder + model_name + '.vmd')
+                print(dst_folder + model_name + '.vmd')
                 # re create
                 pmx = mmformat.PmxModel()
                 vmd = mmformat.VmdMotion()
@@ -320,4 +354,4 @@ def export_pmx(context):
             print(e)
             pass
 
-export_pmx(bpy.context)
+#export_pmx_geo(bpy.context)
