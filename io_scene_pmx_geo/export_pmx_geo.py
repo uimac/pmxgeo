@@ -26,15 +26,14 @@ def copy_image(dst_folder, pmx, mat, texture_dict, image):
         else:
             mat.diffuse_texture_index = texture_dict[filename]
             
-def export_mesh(dst_folder, bm, pmx, vmd, frame, is_write_buffer, mesh_object, last_vertex_count, bmverts_count, vi_to_vis):
+def export_mesh(dst_folder, bm, pmx, vmd, morph, texture_dict,\
+        frame, mesh_index, is_write_buffer, mesh_object, last_vertex_count, bmverts_count, vi_to_vis):
     import mmformat
     
     SWAP_YZ_MATRIX = mathutils.Matrix.Rotation(math.radians(90.0), 4, 'X')
     SWAP_YZ_MATRIX_INV = SWAP_YZ_MATRIX.inverted()
     
     if is_write_buffer:
-        texture_dict = {}
-        
         for v in bm.verts:
             co = SWAP_YZ_MATRIX_INV * mesh_object.matrix_world * v.co
             no = SWAP_YZ_MATRIX_INV * mesh_object.matrix_world * v.normal.normalized()
@@ -101,7 +100,7 @@ def export_mesh(dst_folder, bm, pmx, vmd, frame, is_write_buffer, mesh_object, l
             if len(mesh_object.material_slots) > mat_index:
                 bmat = mesh_object.material_slots[mat_index].material
                 mat = mmformat.PmxMaterial()
-                mat.material_name = "mat_" + str(mat_index)
+                mat.material_name = "mat_" + str(mesh_index) + "_" + str(mat_index)
                 mat.diffuse[0] = bmat.diffuse_color[0]
                 mat.diffuse[1] = bmat.diffuse_color[1]
                 mat.diffuse[2] = bmat.diffuse_color[2]
@@ -130,15 +129,9 @@ def export_mesh(dst_folder, bm, pmx, vmd, frame, is_write_buffer, mesh_object, l
                                     copy_image(dst_folder, pmx, mat, texture_dict, image)
                 pmx.materials.append(mat)
         
-        pmx.bone_count = 1
-        bone = mmformat.PmxBone()
-        bone.as_center_bone()
-        pmx.bones.append(bone)
-        
         pmx.vertex_count = len(pmx.vertices)
         pmx.index_count = len(pmx.indices)
         pmx.material_count = len(pmx.materials)
-        pmx.bone_count = len(pmx.bones)
         pmx.texture_count = len(pmx.textures)
     else:
         if not(len(bm.verts) == bmverts_count):
@@ -148,13 +141,9 @@ def export_mesh(dst_folder, bm, pmx, vmd, frame, is_write_buffer, mesh_object, l
             vmd.ik_frames.append(ikframe)
             return False
 
-    morph = mmformat.PmxMorph()
-    morph.morph_type = mmformat.MorphType.Vertex
-    morph.category = mmformat.MorphCategory.Other
-    morph.offset_count = len(bm.verts)
-    morph.morph_name = "frame_" + str(frame)
+    morph.offset_count = morph.offset_count + len(bm.verts)
     for i, v in enumerate(bm.verts):
-        orgv = pmx.vertices[i].position
+        orgv = pmx.vertices[i + last_vertex_count].position
         co = SWAP_YZ_MATRIX_INV * mesh_object.matrix_world * v.co
         no = SWAP_YZ_MATRIX_INV * mesh_object.matrix_world * v.normal.normalized()
         co.z = -co.z
@@ -171,34 +160,6 @@ def export_mesh(dst_folder, bm, pmx, vmd, frame, is_write_buffer, mesh_object, l
             for vi in vi_to_vis[offset.vertex_index]:
                 offset.vertex_index = vi
                 morph.vertex_offsets.append(offset)
-                
-    pmx.morphs.append(morph)
-    pmx.morph_count = pmx.morph_count + 1
-    
-    if not is_write_buffer:
-        vmdframe = mmformat.VmdFaceFrame()
-        vmdframe.face_name = morph.morph_name
-        vmdframe.frame = frame - 1
-        vmdframe.weight = 0.0
-        vmd.face_frames.append(vmdframe)
-        
-    vmdframe = mmformat.VmdFaceFrame()
-    vmdframe.face_name = morph.morph_name
-    vmdframe.frame = frame
-    vmdframe.weight = 1.0
-    vmd.face_frames.append(vmdframe)
-    
-    vmdframe = mmformat.VmdFaceFrame()
-    vmdframe.face_name = morph.morph_name
-    vmdframe.frame = frame + 1
-    vmdframe.weight = 0.0
-    vmd.face_frames.append(vmdframe)
-    
-    if is_write_buffer:
-        ikframe = mmformat.VmdIkFrame()
-        ikframe.frame = frame
-        ikframe.display = True
-        vmd.ik_frames.append(ikframe)
     
     #print(pmx.vertex_count)
     #print(pmx.index_count)
@@ -216,15 +177,27 @@ def init_pmx(pmx):
     pmx.setting.encoding = 0
 
 def export_frames(dst_folder, context, mesh_objects, pmx, vmd, start_frame, frame_count):
+    import mmformat
     vi_to_vis = {}
     bmverts_count = {}
     last_vertex_counts = {}
+    texture_dict = {}
     for frame in range(frame_count):
         current_frame = start_frame + frame
         context.scene.frame_set(current_frame)
         print("frame:", current_frame)
         is_write_buffer = (current_frame == start_frame)
+            
+        morph = mmformat.PmxMorph()
+        morph.morph_type = mmformat.MorphType.Vertex
+        morph.category = mmformat.MorphCategory.Other
+        morph.morph_name = "frame_" + str(frame)
     
+        bone = mmformat.PmxBone()
+        bone.as_center_bone()
+        pmx.bones.append(bone)
+        pmx.bone_count = len(pmx.bones)
+        
         bpy.ops.object.duplicates_make_real()
         dupli_objects = [ob for ob in bpy.data.objects if ob.type == 'MESH' and ob.select and not (ob in mesh_objects)]
         if len(dupli_objects) > 0:
@@ -241,7 +214,8 @@ def export_frames(dst_folder, context, mesh_objects, pmx, vmd, start_frame, fram
             bmesh.ops.triangulate(bm, faces=bm.faces)
             if is_write_buffer:
                 last_vertex_counts[dupli_object] = len(pmx.vertices)
-                export_mesh(dst_folder, bm, pmx, vmd, current_frame, is_write_buffer, dupli_object, last_vertex_counts[dupli_object], 0, vi_to_vis)
+                export_mesh(dst_folder, bm, pmx, vmd, morph, texture_dict,\
+                    current_frame, 0, is_write_buffer, dupli_object, last_vertex_counts[dupli_object], 0, vi_to_vis)
                 bmverts_count[dupli_object] = len(bm.verts)
                 
                 bpy.ops.object.delete()
@@ -257,7 +231,7 @@ def export_frames(dst_folder, context, mesh_objects, pmx, vmd, start_frame, fram
                 del bm
                 yield current_frame
         else:
-            for mesh_object in mesh_objects:
+            for mesh_index, mesh_object in enumerate(mesh_objects):
                 bm = bmesh.new()
                 bm.from_object(mesh_object, context.scene)
                 bmesh.ops.triangulate(bm, faces=bm.faces)
@@ -265,17 +239,47 @@ def export_frames(dst_folder, context, mesh_objects, pmx, vmd, start_frame, fram
                     continue
                 if is_write_buffer:
                     last_vertex_counts[mesh_object] = len(pmx.vertices)
-                    export_mesh(dst_folder, bm, pmx, vmd, current_frame, is_write_buffer, mesh_object, last_vertex_counts[mesh_object], 0, vi_to_vis)
+                    export_mesh(dst_folder, bm, pmx, vmd, morph, texture_dict,\
+                        current_frame, mesh_index, is_write_buffer, mesh_object, last_vertex_counts[mesh_object], 0, vi_to_vis)
                     bmverts_count[mesh_object] = len(bm.verts)
                 else:
-                    res = export_mesh(dst_folder, bm, pmx, vmd, current_frame, is_write_buffer, mesh_object, last_vertex_counts[mesh_object], bmverts_count[mesh_object], vi_to_vis)
+                    res = export_mesh(dst_folder, bm, pmx, vmd, morph, texture_dict,\
+                        current_frame, mesh_index, is_write_buffer, mesh_object, last_vertex_counts[mesh_object], bmverts_count[mesh_object], vi_to_vis)
                     if not(res):
                         bm.free()
                         del bm
                         yield current_frame
                 bm.free()
                 del bm
-                
+
+        pmx.morphs.append(morph)
+        pmx.morph_count = pmx.morph_count + 1
+        
+        if not is_write_buffer:
+            vmdframe = mmformat.VmdFaceFrame()
+            vmdframe.face_name = morph.morph_name
+            vmdframe.frame = frame - 1
+            vmdframe.weight = 0.0
+            vmd.face_frames.append(vmdframe)
+            
+        vmdframe = mmformat.VmdFaceFrame()
+        vmdframe.face_name = morph.morph_name
+        vmdframe.frame = frame
+        vmdframe.weight = 1.0
+        vmd.face_frames.append(vmdframe)
+        
+        vmdframe = mmformat.VmdFaceFrame()
+        vmdframe.face_name = morph.morph_name
+        vmdframe.frame = frame + 1
+        vmdframe.weight = 0.0
+        vmd.face_frames.append(vmdframe)
+        
+        if is_write_buffer:
+            ikframe = mmformat.VmdIkFrame()
+            ikframe.frame = frame
+            ikframe.display = True
+            vmd.ik_frames.append(ikframe)
+        
     frame = start_frame + frame_count
     yield frame
 
@@ -354,4 +358,4 @@ def export_pmx_geo(\
             print(e)
             pass
 
-#export_pmx_geo(bpy.context)
+#export_pmx_geo('D:/pmx', 'out', bpy.context, True, 0, 1)
