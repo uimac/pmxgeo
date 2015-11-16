@@ -4,7 +4,7 @@
 bl_info = {
     "name": "PmxGeoExport",
     "author": "Kazuma Hatta",
-    "version": (0, 0, 1),
+    "version": (0, 0, 2),
     "blender": (2, 7, 3),
     "location": "File > Import/Export > PmxGeo",
     "description": "Export pmx geometry cache",

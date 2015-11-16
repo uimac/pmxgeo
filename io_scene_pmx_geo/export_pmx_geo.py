@@ -141,7 +141,6 @@ def export_mesh(dst_folder, bm, pmx, vmd, morph, texture_dict,\
             vmd.ik_frames.append(ikframe)
             return False
 
-    morph.offset_count = morph.offset_count + len(bm.verts)
     for i, v in enumerate(bm.verts):
         orgv = pmx.vertices[i + last_vertex_count].position
         co = SWAP_YZ_MATRIX_INV * mesh_object.matrix_world * v.co
@@ -155,11 +154,13 @@ def export_mesh(dst_folder, bm, pmx, vmd, morph, texture_dict,\
         offset.position_offset[2] = sub[2]
         offset.vertex_index = i + last_vertex_count
         morph.vertex_offsets.append(offset)
+        morph.offset_count = morph.offset_count + 1
         
         if offset.vertex_index in vi_to_vis:
             for vi in vi_to_vis[offset.vertex_index]:
                 offset.vertex_index = vi
                 morph.vertex_offsets.append(offset)
+                morph.offset_count = morph.offset_count + 1
     
     #print(pmx.vertex_count)
     #print(pmx.index_count)
@@ -358,4 +359,4 @@ def export_pmx_geo(\
             print(e)
             pass
 
-#export_pmx_geo('D:/pmx', 'out', bpy.context, True, 0, 1)
+#export_pmx_geo('D:/pmx', 'out', bpy.context, True, 2, 10)
