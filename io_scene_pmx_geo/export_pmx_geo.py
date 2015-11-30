@@ -176,6 +176,11 @@ def init_pmx(pmx):
     pmx.setting.vertex_index_size = 4
     pmx.setting.uv = 0
     pmx.setting.encoding = 0
+    
+    bone = mmformat.PmxBone()
+    bone.as_center_bone()
+    pmx.bones.append(bone)
+    pmx.bone_count = len(pmx.bones)
 
 def export_frames(dst_folder, context, mesh_objects, pmx, vmd, start_frame, frame_count):
     import mmformat
@@ -194,11 +199,6 @@ def export_frames(dst_folder, context, mesh_objects, pmx, vmd, start_frame, fram
         morph.category = mmformat.MorphCategory.Other
         morph.morph_name = "frame_" + str(frame)
     
-        bone = mmformat.PmxBone()
-        bone.as_center_bone()
-        pmx.bones.append(bone)
-        pmx.bone_count = len(pmx.bones)
-        
         bpy.ops.object.duplicates_make_real()
         dupli_objects = [ob for ob in bpy.data.objects if ob.type == 'MESH' and ob.select and not (ob in mesh_objects)]
         if len(dupli_objects) > 0:
