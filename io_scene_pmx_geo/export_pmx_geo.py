@@ -167,6 +167,7 @@ def export_mesh(dst_folder, bm, pmx, vmd, morph, texture_dict,\
     return True
 
 def init_pmx(pmx):
+    import mmformat
     pmx.init()
     pmx.setting.bone_index_size = 1
     pmx.setting.material_index_size = 4
